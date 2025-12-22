@@ -1,0 +1,7 @@
+# Production Planning Optimizer Configuration
+
+backend:
+  port: 8000
+  host: "0.0.0.0"
+  coverage_threshold: 90
+  version: "v1"
