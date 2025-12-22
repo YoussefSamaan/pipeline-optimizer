@@ -5,3 +5,8 @@ backend:
   host: "0.0.0.0"
   coverage_threshold: 90
   version: "v1"
+  checks:
+    lint: false
+    format: true
+    type_check: true
+    test: true

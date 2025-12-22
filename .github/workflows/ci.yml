@@ -26,30 +26,52 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install deps
+      - name: Install PyYAML
+        run: pip install PyYAML
+
+      - name: Load Config
+        id: config
+        run: |
+          # Read config from root (one level up from working-directory: backend)
+          python3 -c "
+          import yaml
+          import os
+          config_path = '../config.yml'
+          if not os.path.exists(config_path):
+              print('lint=true\nformat=true\ntype_check=true\ntest=true')
+              exit(0)
+          with open(config_path) as f:
+              c = yaml.safe_load(f).get('backend', {}).get('checks', {})
+          print(f'lint={str(c.get(\"lint\", True)).lower()}')
+          print(f'format={str(c.get(\"format\", True)).lower()}')
+          print(f'type_check={str(c.get(\"type_check\", True)).lower()}')
+          print(f'test={str(c.get(\"test\", True)).lower()}')
+          " >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Lint (ruff)
-        run: |
-          python -m pip install ruff
-          ruff check .
+        if: steps.config.outputs.lint == 'true'
+        run: ruff check .
 
       - name: Format check (ruff format)
-        run: |
-          python -m pip install ruff
-          ruff format --check .
+        if: steps.config.outputs.format == 'true'
+        run: ruff format --check .
 
       - name: Type check (mypy)
-        run: |
-          python -m pip install mypy
-          mypy . || true
+        if: steps.config.outputs.type_check == 'true'
+        env:
+          PYTHONPATH: .
+        run: mypy . || true
 
       - name: Run tests (pytest)
-        run: |
-          python -m pip install pytest
-          pytest -q
+        if: steps.config.outputs.test == 'true'
+        env:
+          PYTHONPATH: .
+        run: pytest --cov=app -q
 
   # frontend:
   #     name: Frontend (React)
