@@ -52,36 +52,32 @@ jobs:
           pytest -q
 
   # frontend:
-  #   name: Frontend (React)
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: frontend
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       node-version: ["18", "20"]
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - name: Set up Node
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ matrix.node-version }}
-  #         cache: npm
-  #         cache-dependency-path: frontend/package-lock.json
-
-  #     - name: Install
-  #       run: npm ci
-
-  #     - name: Lint
-  #       run: npm run lint --if-present
-
-  #     - name: Typecheck
-  #       run: npm run typecheck --if-present
-
-  #     - name: Test
-  #       run: npm test --if-present -- --watch=false
-
-      - name: Build
-        run: npm run build
+  #     name: Frontend (React)
+  #     runs-on: ubuntu-latest
+  #     defaults:
+  #       run:
+  #         working-directory: frontend
+  #     steps:
+  #       - uses: actions/checkout@v4
+  
+  #       - name: Set up Node
+  #         uses: actions/setup-node@v4
+  #         with:
+  #           node-version: "24"
+  #           cache: npm
+  #           cache-dependency-path: frontend/package-lock.json
+  
+  #       - name: Install
+  #         run: npm ci
+  
+  #       - name: Lint
+  #         run: npm run lint --if-present
+  
+  #       - name: Typecheck
+  #         run: npm run typecheck --if-present
+  
+  #       - name: Test
+  #         run: npm test --if-present -- --watch=false
+  
+  #       - name: Build
+  #         run: npm run build
