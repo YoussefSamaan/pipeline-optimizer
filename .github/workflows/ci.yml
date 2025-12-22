@@ -16,17 +16,13 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
@@ -34,8 +30,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # If you have dev deps:
-          # pip install -r requirements-dev.txt
 
       - name: Lint (ruff)
         run: |
@@ -51,7 +45,6 @@ jobs:
         run: |
           python -m pip install mypy
           mypy . || true
-        # ^ set to strict later; for now don't block merges
 
       - name: Run tests (pytest)
         run: |
