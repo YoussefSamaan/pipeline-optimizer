@@ -95,8 +95,6 @@ class TestSchema:
         with pytest.raises(ValidationError):
             NodeSpec(id="", type="process", process=ProcessData())
 
-    # ---- NEW: cover "forbids other payloads" branches ----
-
     def test_node_spec_source_forbids_sink_and_process(self):
         src = SourceData(commodity="A", supply_cap=1)
         snk = SinkData(commodity="A", demand_cap=1)
@@ -137,7 +135,9 @@ class TestSchema:
         assert "forbids" in str(exc.value)
 
     def test_edge_spec_valid(self):
-        edge = EdgeSpec(id="e1", u="n1", v="n2", commodity="Water", cap=100.0, unit_cost=0.5)
+        edge = EdgeSpec(
+            id="e1", u="n1", v="n2", commodity="Water", cap=100.0, unit_cost=0.5
+        )
         assert edge.id == "e1"
         assert edge.u == "n1"
         assert edge.v == "n2"
@@ -159,7 +159,9 @@ class TestSchema:
 
     def test_solve_request_valid(self):
         nodes = [
-            NodeSpec(id="s1", type="source", source=SourceData(commodity="A", supply_cap=10)),
+            NodeSpec(
+                id="s1", type="source", source=SourceData(commodity="A", supply_cap=10)
+            ),
             NodeSpec(id="t1", type="sink", sink=SinkData(commodity="A", demand_cap=10)),
         ]
         edges = [EdgeSpec(id="e1", u="s1", v="t1", commodity="A")]
@@ -169,7 +171,9 @@ class TestSchema:
 
     def test_solve_request_defaults(self):
         nodes = [
-            NodeSpec(id="s1", type="source", source=SourceData(commodity="A", supply_cap=1)),
+            NodeSpec(
+                id="s1", type="source", source=SourceData(commodity="A", supply_cap=1)
+            ),
             NodeSpec(id="t1", type="sink", sink=SinkData(commodity="A", demand_cap=1)),
         ]
         edges = [EdgeSpec(id="e1", u="s1", v="t1", commodity="A")]
