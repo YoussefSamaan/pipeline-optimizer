@@ -1,24 +1,43 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-from app.api.routes import router as api_router
+from fastapi.responses import JSONResponse
 
-app = FastAPI(title="Production Planning Optimizer")
-
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(api_router, prefix="/api/v1")
+from app.api.v1.router import router as v1_router
+from app.core.errors import DomainError
 
 
-if __name__ == "__main__":
+def create_app() -> FastAPI:
+    app = FastAPI(title="Pipeline Optimizer API", version="0.1.0")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.exception_handler(DomainError)
+    def domain_error_handler(_, exc: DomainError):
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    @app.get("/health")
+    def health() -> dict:
+        return {"status": "ok"}
+
+    app.include_router(v1_router, prefix="/v1")
+    return app
+
+def run() -> None:
     import os
+    import uvicorn
 
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
+    reload = os.environ.get("RELOAD", "false").lower() == "true"
+
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=reload)
+
+app = create_app()
+
+if __name__ == "__main__":
+    run()
