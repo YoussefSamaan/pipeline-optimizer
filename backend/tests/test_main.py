@@ -1,6 +1,7 @@
 from app.core.errors import DomainError
 from app import main
 
+
 class TestMain:
     def test_health_check(self, client):
         r = client.get("/health")

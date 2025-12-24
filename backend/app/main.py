@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_router, prefix="/v1")
     return app
 
+
 def run() -> None:
     import os
     import uvicorn
@@ -36,6 +37,7 @@ def run() -> None:
     reload = os.environ.get("RELOAD", "false").lower() == "true"
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=reload)
+
 
 app = create_app()
 
