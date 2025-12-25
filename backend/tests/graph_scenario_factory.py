@@ -546,6 +546,38 @@ class GraphScenarioFactory:
             "options": {"mode": "lp"},
         }
 
+    @staticmethod
+    def process_chain_with_run_cap() -> SolveRequest:
+        return SolveRequest(
+            nodes=[
+                NodeSpec(
+                    id="src",
+                    type="source",
+                    source=SourceData(commodity="A", supply_cap=100, unit_cost=0),
+                ),
+                NodeSpec(
+                    id="p",
+                    type="process",
+                    process=ProcessData(
+                        inputs=[ProcessIO(commodity="A", qty=1)],
+                        outputs=[ProcessIO(commodity="B", qty=1)],
+                        run_cap=3,
+                        run_cost=0,
+                    ),
+                ),
+                NodeSpec(
+                    id="snk",
+                    type="sink",
+                    sink=SinkData(commodity="B", demand_cap=100, unit_value=1),
+                ),
+            ],
+            edges=[
+                EdgeSpec(id="e_in", u="src", v="p", commodity="A"),
+                EdgeSpec(id="e_out", u="p", v="snk", commodity="B"),
+            ],
+            options=SolveOptions(mode="lp", objective=SolveObjective(kind="max_profit")),
+        )
+
     # ----------------------------
     # Curated lists for pytest parametrization
     # ----------------------------
@@ -560,6 +592,7 @@ class GraphScenarioFactory:
             GraphScenarioFactory.water_bottle_scenario(),
             GraphScenarioFactory.multiple_sinks_same_commodity(),
             GraphScenarioFactory.max_flow_objective(),
+            GraphScenarioFactory.process_chain_with_run_cap(),
         ]
 
     @staticmethod
