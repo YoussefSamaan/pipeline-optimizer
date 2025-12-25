@@ -34,7 +34,7 @@ class TestMain:
 
         schema = r.json()
         assert "/health" in schema["paths"]
-        # assert any(path.startswith("/v1/") for path in schema["paths"])
+        assert any(path.startswith("/v1/") for path in schema["paths"])
 
     def test_openapi_metadata(self, client):
         """
