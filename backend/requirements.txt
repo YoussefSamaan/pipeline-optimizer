@@ -7,3 +7,4 @@ PyYAML>=6.0.1
 ruff>=0.4.0
 mypy>=1.10.0
 pydantic>=2.6.0
+ortools>=9.10.0
