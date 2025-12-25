@@ -575,7 +575,9 @@ class GraphScenarioFactory:
                 EdgeSpec(id="e_in", u="src", v="p", commodity="A"),
                 EdgeSpec(id="e_out", u="p", v="snk", commodity="B"),
             ],
-            options=SolveOptions(mode="lp", objective=SolveObjective(kind="max_profit")),
+            options=SolveOptions(
+                mode="lp", objective=SolveObjective(kind="max_profit")
+            ),
         )
 
     # ----------------------------

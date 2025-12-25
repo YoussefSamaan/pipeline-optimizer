@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Set, Optional
+from typing import Dict, List, Tuple, Set
 
 from ortools.linear_solver import pywraplp
 
@@ -103,7 +103,11 @@ def build_lp(spec: SolveRequest) -> LPBuild:
     # Process run capacity
     proc_run_caps: Dict[str, float] = {}
     for n in spec.nodes:
-        if n.type == "process" and n.process is not None and n.process.run_cap is not None:
+        if (
+            n.type == "process"
+            and n.process is not None
+            and n.process.run_cap is not None
+        ):
             proc_run_caps[n.id] = float(n.process.run_cap)
             s.Add(r_proc[n.id] <= n.process.run_cap, f"run_cap[{n.id}]")
 
@@ -174,7 +178,9 @@ def build_lp(spec: SolveRequest) -> LPBuild:
     elif obj.kind == "max_flow_to_sink":
         sink_id = obj.sink_node_id
         if sink_id is None:
-            raise DomainError("objective.kind='max_flow_to_sink' requires objective.sink_node_id.")
+            raise DomainError(
+                "objective.kind='max_flow_to_sink' requires objective.sink_node_id."
+            )
         delivered = sink_delivered_expr.get(sink_id, 0.0)
         s.Maximize(delivered)
 
