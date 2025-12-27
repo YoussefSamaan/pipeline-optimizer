@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Dict, List, Literal, Optional
-from pydantic import BaseModel, Field, model_validator, ConfigDict
 
-NodeType = Literal["source", "process", "sink"]
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
 ModeType = Literal["lp"]
+
+
+class NodeType(str, Enum):
+    SOURCE = "source"
+    PROCESS = "process"
+    SINK = "sink"
 
 
 class StrictBaseModel(BaseModel):
@@ -46,28 +54,28 @@ class NodeSpec(StrictBaseModel):
 
     @model_validator(mode="after")
     def _check_payload_matches_type(self) -> "NodeSpec":
-        required = {
+        has = {
             "source": self.source is not None,
             "sink": self.sink is not None,
             "process": self.process is not None,
         }
 
-        if self.type == "source":
-            if not required["source"]:
+        if self.type == NodeType.SOURCE:
+            if not has["source"]:
                 raise ValueError("Node type 'source' requires 'source' field.")
-            if required["sink"] or required["process"]:
+            if has["sink"] or has["process"]:
                 raise ValueError("Node type 'source' forbids 'sink'/'process' fields.")
 
-        elif self.type == "sink":
-            if not required["sink"]:
+        elif self.type == NodeType.SINK:
+            if not has["sink"]:
                 raise ValueError("Node type 'sink' requires 'sink' field.")
-            if required["source"] or required["process"]:
+            if has["source"] or has["process"]:
                 raise ValueError("Node type 'sink' forbids 'source'/'process' fields.")
 
-        elif self.type == "process":
-            if not required["process"]:
+        elif self.type == NodeType.PROCESS:
+            if not has["process"]:
                 raise ValueError("Node type 'process' requires 'process' field.")
-            if required["source"] or required["sink"]:
+            if has["source"] or has["sink"]:
                 raise ValueError("Node type 'process' forbids 'source'/'sink' fields.")
 
         return self

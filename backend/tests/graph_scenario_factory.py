@@ -9,6 +9,7 @@ from app.domain.schema import (
     SinkData,
     ProcessData,
     ProcessIO,
+    NodeType,
 )
 
 JsonPayload = Dict[str, Any]
@@ -39,12 +40,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="water", supply_cap=100, unit_cost=1),
                 ),
                 NodeSpec(
                     id="snk",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="water", demand_cap=50, unit_value=10),
                 ),
             ],
@@ -60,12 +61,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="farm",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="wheat", supply_cap=100, unit_cost=1),
                 ),
                 NodeSpec(
                     id="mill",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[ProcessIO(commodity="wheat", qty=2)],
                         outputs=[ProcessIO(commodity="flour", qty=1)],
@@ -75,7 +76,7 @@ class GraphScenarioFactory:
                 ),
                 NodeSpec(
                     id="bakery",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="flour", demand_cap=100, unit_value=20),
                 ),
             ],
@@ -94,17 +95,17 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="water",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="water", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="rice",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="rice", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="cook",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[
                             ProcessIO(commodity="water", qty=1),
@@ -116,7 +117,7 @@ class GraphScenarioFactory:
                 ),
                 NodeSpec(
                     id="plate",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(
                         commodity="cooked_rice", demand_cap=100, unit_value=1
                     ),
@@ -138,12 +139,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="iron",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="iron", supply_cap=100, unit_cost=0),
                 ),
                 NodeSpec(
                     id="smelt",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[ProcessIO(commodity="iron", qty=1)],
                         outputs=[ProcessIO(commodity="plate", qty=1)],
@@ -151,7 +152,7 @@ class GraphScenarioFactory:
                 ),
                 NodeSpec(
                     id="sink",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="plate", demand_cap=100, unit_value=1),
                 ),
             ],
@@ -175,18 +176,18 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src_plastic",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="plastic", supply_cap=100, unit_cost=1),
                 ),
                 NodeSpec(
                     id="src_water",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="water", supply_cap=100, unit_cost=1),
                 ),
                 # Make Bottle: 1 Plastic -> 1 Bottle
                 NodeSpec(
                     id="proc_make_bottle",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[ProcessIO(commodity="plastic", qty=1)],
                         outputs=[ProcessIO(commodity="bottle", qty=1)],
@@ -196,7 +197,7 @@ class GraphScenarioFactory:
                 # Fill Bottle: 1 Bottle + 1 Water -> 1 Water Bottle
                 NodeSpec(
                     id="proc_fill_bottle",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[
                             ProcessIO(commodity="bottle", qty=1),
@@ -208,7 +209,7 @@ class GraphScenarioFactory:
                 ),
                 NodeSpec(
                     id="snk",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(
                         commodity="water_bottle", demand_cap=50, unit_value=10
                     ),
@@ -242,17 +243,17 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="hi",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="a", demand_cap=10, unit_value=10),
                 ),
                 NodeSpec(
                     id="lo",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="a", demand_cap=10, unit_value=1),
                 ),
             ],
@@ -271,12 +272,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=100, unit_cost=0),
                 ),
                 NodeSpec(
                     id="snk",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="a", demand_cap=100, unit_value=0),
                 ),
             ],
@@ -297,12 +298,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="n1",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="n1",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="a", demand_cap=10, unit_value=0),
                 ),
             ],
@@ -316,12 +317,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="n1",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="n2",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="a", demand_cap=10, unit_value=0),
                 ),
             ],
@@ -338,7 +339,7 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="n1",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 )
             ],
@@ -352,7 +353,7 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="n1",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 )
             ],
@@ -366,7 +367,7 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="n1",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 )
             ],
@@ -380,7 +381,7 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="p1",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[], outputs=[ProcessIO(commodity="b", qty=1)], run_cost=0
                     ),
@@ -396,7 +397,7 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="p1",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[ProcessIO(commodity="a", qty=1)], outputs=[], run_cost=0
                     ),
@@ -412,12 +413,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="water", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="snk",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="gold", demand_cap=1, unit_value=1),
                 ),
             ],
@@ -431,12 +432,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="snk",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="a", demand_cap=10, unit_value=1),
                 ),
             ],
@@ -450,12 +451,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="a", supply_cap=10, unit_cost=0),
                 ),
                 NodeSpec(
                     id="snk",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="a", demand_cap=10, unit_value=0),
                 ),
             ],
@@ -552,12 +553,12 @@ class GraphScenarioFactory:
             nodes=[
                 NodeSpec(
                     id="src",
-                    type="source",
+                    type=NodeType.SOURCE,
                     source=SourceData(commodity="A", supply_cap=100, unit_cost=0),
                 ),
                 NodeSpec(
                     id="p",
-                    type="process",
+                    type=NodeType.PROCESS,
                     process=ProcessData(
                         inputs=[ProcessIO(commodity="A", qty=1)],
                         outputs=[ProcessIO(commodity="B", qty=1)],
@@ -567,7 +568,7 @@ class GraphScenarioFactory:
                 ),
                 NodeSpec(
                     id="snk",
-                    type="sink",
+                    type=NodeType.SINK,
                     sink=SinkData(commodity="B", demand_cap=100, unit_value=1),
                 ),
             ],
