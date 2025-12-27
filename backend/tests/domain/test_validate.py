@@ -1,140 +1,292 @@
 import pytest
-from app.domain.validate import validate_request
+from unittest.mock import patch
+
 from app.core.errors import DomainError
+from app.domain.schema import (
+    EdgeSpec,
+    NodeSpec,
+    NodeType,
+    ProcessData,
+    ProcessIO,
+    SinkData,
+    SolveObjective,
+    SolveOptions,
+    SolveRequest,
+    SourceData,
+)
+from app.domain.validate import validate_request
 from tests.graph_scenario_factory import GraphScenarioFactory
 
 
+def _req(nodes, edges=None, objective=None) -> SolveRequest:
+    return SolveRequest(
+        nodes=nodes,
+        edges=edges or [],
+        options=SolveOptions(objective=objective or SolveObjective(kind="max_profit")),
+    )
+
+
 class TestValidate:
-    def test_validate_request_valid(self):
-        """Test a perfectly valid request."""
-        # Simple Water -> Sink flow
-        req = GraphScenarioFactory.simple_source_sink()
-        # Should not raise
+    @pytest.mark.parametrize("req", GraphScenarioFactory.valid())
+    def test_validate_request_valid(self, req: SolveRequest):
         validate_request(req)
 
-    def test_duplicate_node_ids(self):
-        req = GraphScenarioFactory.duplicate_node_ids()
-        with pytest.raises(DomainError, match="Duplicate node IDs found"):
+    @pytest.mark.parametrize(
+        "req,pattern",
+        [
+            (GraphScenarioFactory.duplicate_node_ids(), r"Duplicate node IDs found"),
+            (GraphScenarioFactory.duplicate_edge_ids(), r"Duplicate edge IDs found"),
+            (
+                GraphScenarioFactory.missing_u_node(),
+                r"references missing node u='missing_node'",
+            ),
+            (
+                GraphScenarioFactory.missing_v_node(),
+                r"references missing node v='missing_node'",
+            ),
+            (GraphScenarioFactory.self_loop_edge(), r"has self-loop"),
+            (
+                GraphScenarioFactory.process_no_inputs_domain(),
+                r"must have at least one input",
+            ),
+            (
+                GraphScenarioFactory.process_no_outputs_domain(),
+                r"must have at least one output",
+            ),
+            (
+                GraphScenarioFactory.sink_unproduced_commodity(),
+                r"no node produces 'gold'",
+            ),
+            (GraphScenarioFactory.sink_disconnected(), r"can reach it"),
+            (
+                GraphScenarioFactory.objective_max_flow_missing_sink_id(),
+                r"requires objective\.sink_node_id",
+            ),
+        ],
+    )
+    def test_validate_request_domain_invalid(self, req: SolveRequest, pattern: str):
+        with pytest.raises(DomainError, match=pattern):
             validate_request(req)
 
-    def test_duplicate_edge_ids(self):
-        req = GraphScenarioFactory.duplicate_edge_ids()
-        with pytest.raises(DomainError, match="Duplicate edge IDs found"):
-            validate_request(req)
+    def test_edge_cannot_originate_from_sink(self):
+        sink = NodeSpec(
+            id="s1", type=NodeType.SINK, sink=SinkData(commodity="a", demand_cap=1)
+        )
+        proc = NodeSpec(
+            id="p1",
+            type=NodeType.PROCESS,
+            process=ProcessData(
+                inputs=[ProcessIO(commodity="a", qty=1)],
+                outputs=[ProcessIO(commodity="a", qty=1)],
+            ),
+        )
+        e = EdgeSpec(id="e1", u="s1", v="p1", commodity="a")
 
-    def test_from_edge_references_missing_node(self):
-        req = GraphScenarioFactory.missing_u_node()
+        with pytest.raises(DomainError, match=r"cannot originate from sink"):
+            validate_request(_req([sink, proc], [e]))
+
+    def test_edge_cannot_point_into_source(self):
+        src = NodeSpec(
+            id="src",
+            type=NodeType.SOURCE,
+            source=SourceData(commodity="a", supply_cap=10),
+        )
+        proc = NodeSpec(
+            id="p1",
+            type=NodeType.PROCESS,
+            process=ProcessData(
+                inputs=[ProcessIO(commodity="a", qty=1)],
+                outputs=[ProcessIO(commodity="a", qty=1)],
+            ),
+        )
+        e = EdgeSpec(id="e1", u="p1", v="src", commodity="a")
+
+        with pytest.raises(DomainError, match=r"cannot point into source"):
+            validate_request(_req([src, proc], [e]))
+
+    def test_edge_commodity_not_produced_by_u(self):
+        src = NodeSpec(
+            id="src",
+            type=NodeType.SOURCE,
+            source=SourceData(commodity="a", supply_cap=10),
+        )
+        sink = NodeSpec(
+            id="snk", type=NodeType.SINK, sink=SinkData(commodity="b", demand_cap=1)
+        )
+        e = EdgeSpec(id="e1", u="src", v="snk", commodity="b")
+
+        with pytest.raises(DomainError, match=r"does not produce it"):
+            validate_request(_req([src, sink], [e]))
+
+    def test_edge_commodity_not_accepted_by_v(self):
+        src = NodeSpec(
+            id="src",
+            type=NodeType.SOURCE,
+            source=SourceData(commodity="a", supply_cap=10),
+        )
+        sink = NodeSpec(
+            id="snk", type=NodeType.SINK, sink=SinkData(commodity="b", demand_cap=1)
+        )
+        e = EdgeSpec(id="e1", u="src", v="snk", commodity="a")
+
+        with pytest.raises(DomainError, match=r"does not accept it"):
+            validate_request(_req([src, sink], [e]))
+
+    def test_process_duplicate_input_commodities(self):
+        proc = NodeSpec(
+            id="p1",
+            type=NodeType.PROCESS,
+            process=ProcessData(
+                inputs=[
+                    ProcessIO(commodity="a", qty=1),
+                    ProcessIO(commodity="a", qty=2),
+                ],
+                outputs=[ProcessIO(commodity="b", qty=1)],
+            ),
+        )
+
         with pytest.raises(
-            DomainError, match="Edge 'e1' references missing node u='missing_node'"
+            DomainError, match=r"duplicate commodities in process\.inputs"
         ):
-            validate_request(req)
+            validate_request(_req([proc], []))
 
-    def test_to_edge_references_missing_node(self):
-        req = GraphScenarioFactory.missing_v_node()
+    def test_process_duplicate_output_commodities(self):
+        proc = NodeSpec(
+            id="p1",
+            type=NodeType.PROCESS,
+            process=ProcessData(
+                inputs=[ProcessIO(commodity="a", qty=1)],
+                outputs=[
+                    ProcessIO(commodity="b", qty=1),
+                    ProcessIO(commodity="b", qty=2),
+                ],
+            ),
+        )
+
         with pytest.raises(
-            DomainError, match="Edge 'e1' references missing node v='missing_node'"
+            DomainError, match=r"duplicate commodities in process\.outputs"
         ):
-            validate_request(req)
+            validate_request(_req([proc], []))
 
-    def test_edge_self_loop(self):
-        req = GraphScenarioFactory.self_loop_edge()
-        with pytest.raises(DomainError, match="Edge 'e1' has self-loop 'n1'"):
-            validate_request(req)
-
-    def test_process_node_no_inputs(self):
-        req = GraphScenarioFactory.process_no_inputs_domain()
-        with pytest.raises(
-            DomainError, match="Process node 'p1' must have at least one input"
-        ):
-            validate_request(req)
-
-    def test_process_node_no_outputs(self):
-        req = GraphScenarioFactory.process_no_outputs_domain()
-        with pytest.raises(
-            DomainError, match="Process node 'p1' must have at least one output"
-        ):
-            validate_request(req)
-
-    def test_max_flow_no_sink_id(self):
-        """Test that max_flow_to_sink requires a sink_node_id."""
-        req = GraphScenarioFactory.simple_source_sink()
-        req.options.objective.kind = "max_flow_to_sink"
-        req.options.objective.sink_node_id = None
-
-        with pytest.raises(DomainError, match="requires objective.sink_node_id"):
-            validate_request(req)
-
-    def test_max_flow_invalid_sink_id(self):
-        """Test that max_flow_to_sink fails if sink_node_id does not exist."""
-        req = GraphScenarioFactory.simple_source_sink()
-        req.options.objective.kind = "max_flow_to_sink"
+    def test_max_flow_sink_id_not_found(self):
+        req = GraphScenarioFactory.max_flow_objective()
         req.options.objective.sink_node_id = "missing"
 
         with pytest.raises(
-            DomainError, match="objective.sink_node_id 'missing' not found"
+            DomainError, match=r"objective\.sink_node_id 'missing' not found"
         ):
             validate_request(req)
 
     def test_max_flow_sink_id_not_sink_type(self):
-        """Test that sink_node_id must point to a node of type 'sink'."""
-        req = GraphScenarioFactory.simple_source_sink()
-        req.options.objective.kind = "max_flow_to_sink"
-        # 'src' is a source node, not a sink
+        req = GraphScenarioFactory.max_flow_objective()
         req.options.objective.sink_node_id = "src"
 
-        with pytest.raises(
-            DomainError,
-            match="objective.sink_node_id must point to a node of type 'sink'",
-        ):
+        with pytest.raises(DomainError, match=r"must point to a node of type 'sink'"):
             validate_request(req)
 
-    def test_sink_reachability_no_producer(self):
-        # Sink demands 'B' (gold), but only 'A' (water) is produced
-        req = GraphScenarioFactory.sink_unproduced_commodity()
+    def test_sink_demand_zero_skips_reachability(self):
+        sink = NodeSpec(
+            id="snk", type=NodeType.SINK, sink=SinkData(commodity="x", demand_cap=0)
+        )
+        validate_request(_req([sink], []))
 
-        # The factory scenario has Sink(Gold) and Source(Water).
-        # Verify validation error message matches.
-        with pytest.raises(
-            DomainError, match="demands 'gold', but no node produces 'gold'"
-        ):
-            validate_request(req)
+    def test_node_shape_checks_are_defensive(self):
+        bad_src = NodeSpec.model_construct(
+            id="src",
+            type=NodeType.SOURCE,
+            name=None,
+            source=None,
+            sink=None,
+            process=None,
+        )
+        bad_snk = NodeSpec.model_construct(
+            id="snk",
+            type=NodeType.SINK,
+            name=None,
+            source=None,
+            sink=None,
+            process=None,
+        )
+        bad_proc = NodeSpec.model_construct(
+            id="p1",
+            type=NodeType.PROCESS,
+            name=None,
+            source=None,
+            sink=None,
+            process=None,
+        )
 
-    def test_sink_demands_no_producers_zero_cap(self):
-        """
-        If a sink demands a commodity that no one produces, but demand_cap is 0,
-        it should NOT raise an error (it's effectively a disabled sink).
-        """
+        req1 = SolveRequest.model_construct(
+            nodes=[bad_src], edges=[], options=SolveOptions()
+        )
+        req2 = SolveRequest.model_construct(
+            nodes=[bad_snk], edges=[], options=SolveOptions()
+        )
+        req3 = SolveRequest.model_construct(
+            nodes=[bad_proc], edges=[], options=SolveOptions()
+        )
+
+        with pytest.raises(DomainError, match=r"must include 'source' spec"):
+            validate_request(req1)
+        with pytest.raises(DomainError, match=r"must include 'sink' spec"):
+            validate_request(req2)
+        with pytest.raises(DomainError, match=r"must include 'process' spec"):
+            validate_request(req3)
+
+    def test_reachability_failure_is_propagated_with_mock(self):
         req = GraphScenarioFactory.simple_source_sink()
-        # Change sink to demand "Unknown" but with 0 cap
-        req.nodes[1].sink.commodity = "Unknown"
-        req.nodes[1].sink.demand_cap = 0.0
 
-        validate_request(req)
+        with patch(
+            "app.domain.validate._reverse_reachable_from_any_producer",
+            return_value=False,
+        ):
+            with pytest.raises(DomainError, match=r"can reach it"):
+                validate_request(req)
 
-    def test_sink_demands_no_producers_positive_cap(self):
-        """
-        If a sink demands a commodity that no one produces, and demand_cap > 0,
-        it MUST raise an error.
-        """
+    def test_produced_commodities_mock_forces_production_error(self):
         req = GraphScenarioFactory.simple_source_sink()
-        # Change sink to demand "Unknown" with positive cap
-        req.nodes[1].sink.commodity = "Unknown"
-        req.nodes[1].sink.demand_cap = 10.0
 
-        with pytest.raises(
-            DomainError, match="demands 'Unknown', but no node produces 'Unknown'"
-        ):
-            validate_request(req)
+        with patch("app.domain.validate._produced_commodities", return_value=set()):
+            with pytest.raises(DomainError, match=r"does not produce it"):
+                validate_request(req)
 
-    def test_sink_reachability_disconnected(self):
-        # 'A' is produced, but not connected to sink
-        req = GraphScenarioFactory.sink_disconnected()
-        with pytest.raises(
-            DomainError, match="demands 'a', but no producer can reach it"
-        ):
-            validate_request(req)
+    def test_accepted_commodities_mock_forces_accept_error(self):
+        req = GraphScenarioFactory.simple_source_sink()
 
-    def test_sink_reachability_valid_process_chain(self):
-        # Source(A) -> Process(A->B) -> Sink(B)
-        req = GraphScenarioFactory.process_chain()
-        validate_request(req)
+        with patch("app.domain.validate._accepted_commodities", return_value=set()):
+            with pytest.raises(DomainError, match=r"does not accept it"):
+                validate_request(req)
+
+    def test_cover_produced_commodities_final_return_set_with_mock(self):
+        # Edge level validation (force u=sink by bypassing direction check)
+        u = NodeSpec(
+            id="u_sink", type=NodeType.SINK, sink=SinkData(commodity="a", demand_cap=1)
+        )
+        v = NodeSpec(
+            id="v_sink", type=NodeType.SINK, sink=SinkData(commodity="a", demand_cap=1)
+        )
+        e = EdgeSpec(id="e1", u="u_sink", v="v_sink", commodity="a")
+        req = SolveRequest(nodes=[u, v], edges=[e], options=SolveOptions())
+
+        with patch("app.domain.validate._edge_direction_is_correct", return_value=None):
+            with pytest.raises(DomainError, match=r"does not produce it"):
+                validate_request(req)
+
+    def test_cover_accepted_commodities_final_return_set_with_mock(self):
+        # Edge level validation (force v=source by bypassing direction check)
+        u = NodeSpec(
+            id="u_src",
+            type=NodeType.SOURCE,
+            source=SourceData(commodity="a", supply_cap=10),
+        )
+        v = NodeSpec(
+            id="v_src",
+            type=NodeType.SOURCE,
+            source=SourceData(commodity="b", supply_cap=10),
+        )
+        e = EdgeSpec(id="e1", u="u_src", v="v_src", commodity="a")
+        req = SolveRequest(nodes=[u, v], edges=[e], options=SolveOptions())
+
+        with patch("app.domain.validate._edge_direction_is_correct", return_value=None):
+            with pytest.raises(DomainError, match=r"does not accept it"):
+                validate_request(req)
