@@ -1,10 +1,13 @@
+import pytest
+
 from app.core.errors import DomainError
 from app import main
 
 
 class TestMain:
-    def test_health_check(self, client):
-        r = client.get("/health")
+    @pytest.mark.parametrize("path", ["/health", "/v1/health"])
+    def test_health_check(self, client, path):
+        r = client.get(path)
         assert r.status_code == 200
         assert r.json() == {"status": "ok"}
 
@@ -34,6 +37,7 @@ class TestMain:
 
         schema = r.json()
         assert "/health" in schema["paths"]
+        assert "/v1/health" in schema["paths"]
         assert any(path.startswith("/v1/") for path in schema["paths"])
 
     def test_openapi_metadata(self, client):
@@ -44,7 +48,7 @@ class TestMain:
         schema = r.json()
 
         assert schema["info"]["title"] == "Pipeline Optimizer API"
-        assert schema["info"]["version"] == "0.1.0"
+        assert schema["info"]["version"] == "0.2.0"
 
     def test_run_uses_default_env(self, monkeypatch):
         calls = {}

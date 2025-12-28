@@ -7,15 +7,15 @@ The backend is a high-performance REST API built with **FastAPI** that serves as
 - **Server**: Uvicorn
 
 ## Directory Structure
-- `app/api`: API route handlers
-- `app/models`: Pydantic data models
-- `app/algorithms`: Solver implementations
-- `tests`: Unit tests
+- `app/api`: Versioned API routers (`/v1` includes `/solve` and a versioned health check)
+- `app/domain`: Pydantic schemas plus request normalization and validation
+- `app/solvers`: OR-Tools linear-programming builder/extractor/solver
+- `tests`: Pytest suite covering API, domain validation, and solver behavior
 
 ## Running Locally
 
 ### 1. Unified Run Script (Recommended)
-This script enforces **>90% test coverage** before starting the server.
+This script enforces **>90% test coverage** before starting the server. Linting/formatting/type checks can be toggled from `config.yml` (linting is currently disabled there by default).
 ```bash
 # From the project root
 ./run_backend.sh
@@ -34,7 +34,12 @@ We enforce a strict **90% coverage** threshold. If coverage falls below this, th
 ```
 
 ## Health Check
-GET http://localhost:8000/api/v1/health
+GET http://localhost:8000/health  
+GET http://localhost:8000/v1/health
 ```json
 {"status": "ok"}
 ```
+
+## API Metadata
+- Title: `Pipeline Optimizer API`  
+- Version: `0.2.0`
