@@ -6,7 +6,7 @@ backend:
   coverage_threshold: 90
   version: "v1"
   checks:
-    lint: false
+    lint: true
     format: true
     type_check: true
     test: true
