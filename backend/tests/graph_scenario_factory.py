@@ -10,6 +10,7 @@ from app.domain.schema import (
     ProcessData,
     ProcessIO,
     NodeType,
+    SolveMode,
 )
 
 JsonPayload = Dict[str, Any]
@@ -51,7 +52,7 @@ class GraphScenarioFactory:
             ],
             edges=[EdgeSpec(id="e1", u="src", v="snk", commodity="water")],
             options=SolveOptions(
-                mode="lp", objective=SolveObjective(kind="max_profit")
+                mode=SolveMode.LP, objective=SolveObjective(kind="max_profit")
             ),
         )
 
@@ -85,7 +86,7 @@ class GraphScenarioFactory:
                 EdgeSpec(id="e2", u="mill", v="bakery", commodity="flour"),
             ],
             options=SolveOptions(
-                mode="lp", objective=SolveObjective(kind="max_profit")
+                mode=SolveMode.LP, objective=SolveObjective(kind="max_profit")
             ),
         )
 
@@ -129,7 +130,7 @@ class GraphScenarioFactory:
                 EdgeSpec(id="e3", u="cook", v="plate", commodity="cooked_rice"),
             ],
             options=SolveOptions(
-                mode="lp", objective=SolveObjective(kind="max_profit")
+                mode=SolveMode.LP, objective=SolveObjective(kind="max_profit")
             ),
         )
 
@@ -161,7 +162,7 @@ class GraphScenarioFactory:
                 EdgeSpec(id="e_out", u="smelt", v="sink", commodity="plate"),
             ],
             options=SolveOptions(
-                mode="lp", objective=SolveObjective(kind="max_profit")
+                mode=SolveMode.LP, objective=SolveObjective(kind="max_profit")
             ),
         )
 
@@ -233,7 +234,7 @@ class GraphScenarioFactory:
                 ),
             ],
             options=SolveOptions(
-                mode="lp", objective=SolveObjective(kind="max_profit")
+                mode=SolveMode.LP, objective=SolveObjective(kind="max_profit")
             ),
         )
 
@@ -262,7 +263,7 @@ class GraphScenarioFactory:
                 EdgeSpec(id="e2", u="src", v="lo", commodity="a"),
             ],
             options=SolveOptions(
-                mode="lp", objective=SolveObjective(kind="max_profit")
+                mode=SolveMode.LP, objective=SolveObjective(kind="max_profit")
             ),
         )
 
@@ -283,7 +284,7 @@ class GraphScenarioFactory:
             ],
             edges=[EdgeSpec(id="e1", u="src", v="snk", commodity="a")],
             options=SolveOptions(
-                mode="lp",
+                mode=SolveMode.LP,
                 objective=SolveObjective(kind="max_flow_to_sink", sink_node_id="snk"),
             ),
         )
@@ -462,7 +463,7 @@ class GraphScenarioFactory:
             ],
             edges=[EdgeSpec(id="e1", u="src", v="snk", commodity="a")],
             options=SolveOptions(
-                mode="lp",
+                mode=SolveMode.LP,
                 objective=SolveObjective(kind="max_flow_to_sink", sink_node_id=None),
             ),
         )
@@ -577,7 +578,7 @@ class GraphScenarioFactory:
                 EdgeSpec(id="e_out", u="p", v="snk", commodity="B"),
             ],
             options=SolveOptions(
-                mode="lp", objective=SolveObjective(kind="max_profit")
+                mode=SolveMode.LP, objective=SolveObjective(kind="max_profit")
             ),
         )
 

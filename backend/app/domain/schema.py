@@ -6,7 +6,9 @@ from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-ModeType = Literal["lp"]
+
+class SolveMode(str, Enum):
+    LP = "lp"
 
 
 class NodeType(str, Enum):
@@ -97,7 +99,7 @@ class SolveObjective(StrictBaseModel):
 
 
 class SolveOptions(StrictBaseModel):
-    mode: ModeType = "lp"
+    mode: SolveMode = SolveMode.LP
     objective: SolveObjective = Field(default_factory=SolveObjective)
 
 

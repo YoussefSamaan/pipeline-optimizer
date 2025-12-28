@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from app.domain.schema import SolveRequest, SolveResult
 from app.domain.normalize import normalize_request
+from app.domain.schema import SolveRequest, SolveResult, SolveMode
 from app.domain.validate import validate_request
 from app.solvers.lp.solver import solve_lp
 
@@ -12,7 +12,7 @@ def solve(req: SolveRequest) -> SolveResult:
     spec = normalize_request(req)
     validate_request(spec)
 
-    if spec.options.mode != "lp":
+    if spec.options.mode != SolveMode.LP:
         return SolveResult(
             status="error",
             message=f"Mode '{spec.options.mode}' not implemented yet (supports mode='lp').",
