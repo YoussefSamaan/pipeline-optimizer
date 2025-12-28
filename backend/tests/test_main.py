@@ -48,7 +48,7 @@ class TestMain:
         schema = r.json()
 
         assert schema["info"]["title"] == "Pipeline Optimizer API"
-        assert schema["info"]["version"] == "0.1.0"
+        assert schema["info"]["version"] == "1.0.0"
 
     def test_run_uses_default_env(self, monkeypatch):
         calls = {}
