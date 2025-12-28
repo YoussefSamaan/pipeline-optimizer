@@ -13,6 +13,7 @@ from app.domain.schema import (
     SolveOptions,
     SolveRequest,
     SourceData,
+    ObjectiveKind,
 )
 from app.domain.validate import validate_request
 from tests.graph_scenario_factory import GraphScenarioFactory
@@ -22,7 +23,9 @@ def _req(nodes, edges=None, objective=None) -> SolveRequest:
     return SolveRequest(
         nodes=nodes,
         edges=edges or [],
-        options=SolveOptions(objective=objective or SolveObjective(kind="max_profit")),
+        options=SolveOptions(
+            objective=objective or SolveObjective(kind=ObjectiveKind.MAX_PROFIT)
+        ),
     )
 
 
@@ -58,10 +61,6 @@ class TestValidate:
                 r"no node produces 'gold'",
             ),
             (GraphScenarioFactory.sink_disconnected(), r"can reach it"),
-            (
-                GraphScenarioFactory.objective_max_flow_missing_sink_id(),
-                r"requires objective\.sink_node_id",
-            ),
         ],
     )
     def test_validate_request_domain_invalid(self, req: SolveRequest, pattern: str):
@@ -168,20 +167,23 @@ class TestValidate:
         ):
             validate_request(_req([proc], []))
 
-    def test_max_flow_sink_id_not_found(self):
-        req = GraphScenarioFactory.max_flow_objective()
-        req.options.objective.sink_node_id = "missing"
+    @pytest.mark.parametrize(
+        "kind",
+        [
+            ObjectiveKind.MAX_SINK_CONSUMPTION,
+            ObjectiveKind.MAX_PRODUCTION,
+            ObjectiveKind.MAX_PROCESS_RUNS,
+            ObjectiveKind.MIN_COST,
+            ObjectiveKind.MIN_TOTAL_PROCESS_RUNS,
+        ],
+    )
+    def test_unimplemented_objective_raises(self, kind: ObjectiveKind):
+        req = _req([], [])
+        req.options.objective.kind = kind
 
         with pytest.raises(
-            DomainError, match=r"objective\.sink_node_id 'missing' not found"
+            DomainError, match=f"Objective '{kind}' is not yet implemented"
         ):
-            validate_request(req)
-
-    def test_max_flow_sink_id_not_sink_type(self):
-        req = GraphScenarioFactory.max_flow_objective()
-        req.options.objective.sink_node_id = "src"
-
-        with pytest.raises(DomainError, match=r"must point to a node of type 'sink'"):
             validate_request(req)
 
     def test_sink_demand_zero_skips_reachability(self):

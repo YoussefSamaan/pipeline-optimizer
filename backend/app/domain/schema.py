@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -16,6 +16,15 @@ class SolveStatus(str, Enum):
     INFEASIBLE = "infeasible"
     UNBOUNDED = "unbounded"
     ERROR = "error"
+
+
+class ObjectiveKind(str, Enum):
+    MAX_PROFIT = "max_profit"
+    MAX_SINK_CONSUMPTION = "max_sink_consumption"
+    MAX_PRODUCTION = "max_production"
+    MAX_PROCESS_RUNS = "max_process_runs"
+    MIN_COST = "min_cost"
+    MIN_TOTAL_PROCESS_RUNS = "min_total_process_runs"
 
 
 class NodeType(str, Enum):
@@ -101,7 +110,7 @@ class EdgeSpec(StrictBaseModel):
 
 
 class SolveObjective(StrictBaseModel):
-    kind: Literal["max_profit", "max_flow_to_sink"] = "max_profit"
+    kind: ObjectiveKind = ObjectiveKind.MAX_PROFIT
     sink_node_id: Optional[str] = None
 
 

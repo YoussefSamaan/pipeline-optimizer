@@ -9,6 +9,9 @@ from app.domain.schema import (
     NodeSpec,
     EdgeSpec,
     SolveRequest,
+    NodeType,
+    SolveMode,
+    ObjectiveKind,
 )
 
 
@@ -67,33 +70,33 @@ class TestSchema:
 
     def test_node_spec_valid_source(self):
         source_data = SourceData(commodity="A", supply_cap=100.0)
-        node = NodeSpec(id="n1", type="source", source=source_data)
+        node = NodeSpec(id="n1", type=NodeType.SOURCE, source=source_data)
         assert node.id == "n1"
-        assert node.type == "source"
+        assert node.type == NodeType.SOURCE
         assert node.source == source_data
 
     def test_node_spec_valid_process(self):
         proc_data = ProcessData(inputs=[], outputs=[])
-        node = NodeSpec(id="n2", type="process", process=proc_data)
-        assert node.type == "process"
+        node = NodeSpec(id="n2", type=NodeType.PROCESS, process=proc_data)
+        assert node.type == NodeType.PROCESS
         assert node.process == proc_data
 
     def test_node_spec_invalid_missing_payload(self):
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n1", type="source")
+            NodeSpec(id="n1", type=NodeType.SOURCE)
         assert "requires 'source'" in str(exc.value)
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n2", type="sink")
+            NodeSpec(id="n2", type=NodeType.SINK)
         assert "requires 'sink'" in str(exc.value)
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n3", type="process")
+            NodeSpec(id="n3", type=NodeType.PROCESS)
         assert "requires 'process'" in str(exc.value)
 
     def test_node_spec_invalid_id(self):
         with pytest.raises(ValidationError):
-            NodeSpec(id="", type="process", process=ProcessData())
+            NodeSpec(id="", type=NodeType.PROCESS, process=ProcessData())
 
     def test_node_spec_source_forbids_sink_and_process(self):
         src = SourceData(commodity="A", supply_cap=1)
@@ -101,11 +104,11 @@ class TestSchema:
         proc = ProcessData()
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n1", type="source", source=src, sink=snk)
+            NodeSpec(id="n1", type=NodeType.SOURCE, source=src, sink=snk)
         assert "forbids" in str(exc.value)
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n2", type="source", source=src, process=proc)
+            NodeSpec(id="n2", type=NodeType.SOURCE, source=src, process=proc)
         assert "forbids" in str(exc.value)
 
     def test_node_spec_sink_forbids_source_and_process(self):
@@ -114,11 +117,11 @@ class TestSchema:
         proc = ProcessData()
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n1", type="sink", sink=snk, source=src)
+            NodeSpec(id="n1", type=NodeType.SINK, sink=snk, source=src)
         assert "forbids" in str(exc.value)
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n2", type="sink", sink=snk, process=proc)
+            NodeSpec(id="n2", type=NodeType.SINK, sink=snk, process=proc)
         assert "forbids" in str(exc.value)
 
     def test_node_spec_process_forbids_source_and_sink(self):
@@ -127,11 +130,11 @@ class TestSchema:
         snk = SinkData(commodity="A", demand_cap=1)
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n1", type="process", process=proc, source=src)
+            NodeSpec(id="n1", type=NodeType.PROCESS, process=proc, source=src)
         assert "forbids" in str(exc.value)
 
         with pytest.raises(ValidationError) as exc:
-            NodeSpec(id="n2", type="process", process=proc, sink=snk)
+            NodeSpec(id="n2", type=NodeType.PROCESS, process=proc, sink=snk)
         assert "forbids" in str(exc.value)
 
     def test_edge_spec_valid(self):
@@ -160,9 +163,13 @@ class TestSchema:
     def test_solve_request_valid(self):
         nodes = [
             NodeSpec(
-                id="s1", type="source", source=SourceData(commodity="A", supply_cap=10)
+                id="s1",
+                type=NodeType.SOURCE,
+                source=SourceData(commodity="A", supply_cap=10),
             ),
-            NodeSpec(id="t1", type="sink", sink=SinkData(commodity="A", demand_cap=10)),
+            NodeSpec(
+                id="t1", type=NodeType.SINK, sink=SinkData(commodity="A", demand_cap=10)
+            ),
         ]
         edges = [EdgeSpec(id="e1", u="s1", v="t1", commodity="A")]
         req = SolveRequest(nodes=nodes, edges=edges)
@@ -172,13 +179,17 @@ class TestSchema:
     def test_solve_request_defaults(self):
         nodes = [
             NodeSpec(
-                id="s1", type="source", source=SourceData(commodity="A", supply_cap=1)
+                id="s1",
+                type=NodeType.SOURCE,
+                source=SourceData(commodity="A", supply_cap=1),
             ),
-            NodeSpec(id="t1", type="sink", sink=SinkData(commodity="A", demand_cap=1)),
+            NodeSpec(
+                id="t1", type=NodeType.SINK, sink=SinkData(commodity="A", demand_cap=1)
+            ),
         ]
         edges = [EdgeSpec(id="e1", u="s1", v="t1", commodity="A")]
         req = SolveRequest(nodes=nodes, edges=edges)
 
-        assert req.options.mode == "lp"
-        assert req.options.objective.kind == "max_profit"
+        assert req.options.mode == SolveMode.LP
+        assert req.options.objective.kind == ObjectiveKind.MAX_PROFIT
         assert req.options.objective.sink_node_id is None

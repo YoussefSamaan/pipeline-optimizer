@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from typing import Deque, Dict, List, Set
 
 from app.core.errors import DomainError
-from app.domain.schema import EdgeSpec, NodeSpec, NodeType, SolveRequest
+from app.domain.schema import EdgeSpec, NodeSpec, NodeType, SolveRequest, ObjectiveKind
 
 
 def validate_request(req: SolveRequest) -> None:
@@ -38,15 +38,8 @@ def validate_request(req: SolveRequest) -> None:
 
     # Objective level validation
     obj = req.options.objective
-    if obj.kind == "max_flow_to_sink":
-        if not obj.sink_node_id:
-            raise DomainError("max_flow_to_sink requires objective.sink_node_id.")
-        if obj.sink_node_id not in nodes_by_id:
-            raise DomainError(f"objective.sink_node_id '{obj.sink_node_id}' not found.")
-        if nodes_by_id[obj.sink_node_id].type != NodeType.SINK:
-            raise DomainError(
-                "objective.sink_node_id must point to a node of type 'sink'."
-            )
+    if obj.kind != ObjectiveKind.MAX_PROFIT:
+        raise DomainError(f"Objective '{obj.kind}' is not yet implemented.")
 
     # Sanity: if a sink has positive demand, some producer of that commodity should reach it via that commodity's edges.
     _validate_sink_reachability(req)

@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Set
 from ortools.linear_solver import pywraplp
 
 from app.core.errors import DomainError
-from app.domain.schema import SolveRequest
+from app.domain.schema import SolveRequest, ObjectiveKind
 
 
 @dataclass
@@ -151,7 +151,7 @@ def build_lp(spec: SolveRequest) -> LPBuild:
     obj = spec.options.objective
     objective_expr = 0.0
 
-    if obj.kind == "max_profit":
+    if obj.kind == ObjectiveKind.MAX_PROFIT:
         # Revenue from sinks
         for n in spec.nodes:
             if n.type == "sink" and n.sink is not None:
@@ -175,14 +175,9 @@ def build_lp(spec: SolveRequest) -> LPBuild:
 
         s.Maximize(objective_expr)
 
-    elif obj.kind == "max_flow_to_sink":
-        sink_id = obj.sink_node_id
-        if sink_id is None:
-            raise DomainError(
-                "objective.kind='max_flow_to_sink' requires objective.sink_node_id."
-            )
-        delivered = sink_delivered_expr.get(sink_id, 0.0)
-        s.Maximize(delivered)
+    else:
+        # Placeholder for other objectives
+        raise DomainError(f"Objective '{obj.kind}' is not yet implemented.")
 
     return LPBuild(
         solver=s,

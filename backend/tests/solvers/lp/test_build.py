@@ -6,6 +6,7 @@ from ortools.linear_solver import pywraplp
 from app.core.errors import DomainError
 from app.domain.schema import EdgeSpec
 from app.solvers.lp.build import build_lp
+from app.domain.schema import ObjectiveKind
 from tests.graph_scenario_factory import GraphScenarioFactory
 
 
@@ -41,23 +42,6 @@ class TestBuild:
         assert math.isclose(
             built.f_edge["e_in"].solution_value(), 7.0, rel_tol=0, abs_tol=1e-6
         )
-
-    def test_objective_max_flow(self):
-        req = GraphScenarioFactory.max_flow_objective()
-        built = build_lp(req)
-        assert_optimal(built)
-
-        assert math.isclose(
-            built.f_edge["e1"].solution_value(), 100.0, rel_tol=0, abs_tol=1e-6
-        )
-
-    def test_max_flow_missing_sink_id_raises(self):
-        # This is a *defensive* build_lp check (normally caught by validate_request)
-        req = copy.deepcopy(GraphScenarioFactory.max_flow_objective())
-        req.options.objective.sink_node_id = None
-
-        with pytest.raises(DomainError, match="requires objective.sink_node_id"):
-            build_lp(req)
 
     def test_create_solver_none_raises(self, monkeypatch):
         import app.solvers.lp.build as build_mod
@@ -99,3 +83,22 @@ class TestBuild:
         assert math.isclose(
             built.f_edge["e_out"].solution_value(), 3.0, rel_tol=0, abs_tol=1e-6
         )
+
+    @pytest.mark.parametrize(
+        "kind",
+        [
+            ObjectiveKind.MAX_SINK_CONSUMPTION,
+            ObjectiveKind.MAX_PRODUCTION,
+            ObjectiveKind.MAX_PROCESS_RUNS,
+            ObjectiveKind.MIN_COST,
+            ObjectiveKind.MIN_TOTAL_PROCESS_RUNS,
+        ],
+    )
+    def test_unimplemented_objective_raises(self, kind: ObjectiveKind):
+        req = GraphScenarioFactory.simple_source_sink()
+        req.options.objective.kind = kind
+
+        with pytest.raises(
+            DomainError, match=f"Objective '{kind}' is not yet implemented"
+        ):
+            build_lp(req)
