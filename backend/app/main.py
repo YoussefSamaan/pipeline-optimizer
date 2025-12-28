@@ -7,7 +7,7 @@ from app.core.errors import DomainError
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Pipeline Optimizer API", version="0.1.0")
+    app = FastAPI(title="Pipeline Optimizer API", version="1.0.0")
 
     app.add_middleware(
         CORSMiddleware,
