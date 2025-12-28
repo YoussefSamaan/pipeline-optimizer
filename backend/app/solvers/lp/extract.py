@@ -1,48 +1,49 @@
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 
 from ortools.linear_solver import pywraplp
 
-from app.domain.schema import SolveRequest, SolveResult, TightConstraint
+from app.domain.schema import (
+    NodeType,
+    SolveRequest,
+    SolveResult,
+    SolveStatus,
+    TightConstraint,
+)
 from app.solvers.lp.build import LPBuild
 
-
-_APIStatus = Literal["optimal", "infeasible", "unbounded", "error"]
+# OR-Tools returns an int status code; this alias makes typing intent explicit.
+_LpStatus = int
 
 
 def extract_solution(
     spec: SolveRequest, built: LPBuild, eps: float = 1e-7
 ) -> SolveResult:
     s = built.solver
-    status = s.Solve()
+    status_code = s.Solve()
 
-    # --- status mapping / early returns ---
-    if status == pywraplp.Solver.OPTIMAL:
-        api_status: _APIStatus = "optimal"
-        message: Optional[str] = None
-    elif status == pywraplp.Solver.FEASIBLE:
-        # GLOP typically returns OPTIMAL, but keep this for completeness.
-        api_status = "optimal"
+    # Status mapping (treat FEASIBLE as "optimal" for now, but add a message)
+    status_map: Dict[_LpStatus, SolveStatus] = {
+        pywraplp.Solver.OPTIMAL: SolveStatus.OPTIMAL,
+        pywraplp.Solver.FEASIBLE: SolveStatus.OPTIMAL,
+        pywraplp.Solver.INFEASIBLE: SolveStatus.INFEASIBLE,
+        pywraplp.Solver.UNBOUNDED: SolveStatus.UNBOUNDED,
+    }
+    result_status = status_map.get(status_code, SolveStatus.ERROR)
+
+    if result_status == SolveStatus.INFEASIBLE:
+        return _empty_result(SolveStatus.INFEASIBLE, "Model is infeasible.")
+    if result_status == SolveStatus.UNBOUNDED:
+        return _empty_result(SolveStatus.UNBOUNDED, "Model is unbounded.")
+    if result_status == SolveStatus.ERROR:
+        return _empty_result(SolveStatus.ERROR, _status_message(status_code))
+
+    message: Optional[str] = None
+    if status_code == pywraplp.Solver.FEASIBLE:
         message = "Solver returned FEASIBLE (treated as optimal)."
-    elif status == pywraplp.Solver.INFEASIBLE:
-        return _empty_result("infeasible", "Model is infeasible.")
-    elif status == pywraplp.Solver.UNBOUNDED:
-        return _empty_result("unbounded", "Model is unbounded.")
-    elif status == pywraplp.Solver.MODEL_INVALID:
-        return _empty_result(
-            "error", "Model is invalid (NaN/Inf coefficients or malformed constraints)."
-        )
-    elif status == pywraplp.Solver.NOT_SOLVED:
-        return _empty_result(
-            "error", "Model not solved (solver did not run or stopped early)."
-        )
-    elif status == pywraplp.Solver.ABNORMAL:
-        return _empty_result("error", "Solver ended abnormally.")
-    else:
-        return _empty_result("error", f"Unknown solver status: {status}")
 
-    # --- extract variables ---
+    # Solution values
     edge_flows: Dict[str, float] = {
         eid: var.solution_value() for eid, var in built.f_edge.items()
     }
@@ -50,24 +51,13 @@ def extract_solution(
         nid: var.solution_value() for nid, var in built.r_proc.items()
     }
 
-    # delivered to sinks = inflow of sink commodity (as built)
-    sink_delivered: Dict[str, float] = {}
-    for n in spec.nodes:
-        if n.type == "sink" and n.sink is not None:
-            expr = built.sink_delivered_expr.get(n.id, 0.0)
-            # expr might be float 0.0 or LinearExpr-like
-            try:
-                val = float(expr.solution_value())
-            except AttributeError:
-                val = float(expr)
-            sink_delivered[n.id] = val
+    # Delivered to sinks = total incoming flow for each sink's commodity
+    sink_delivered = _compute_sink_delivered(spec, built, edge_flows)
 
-    tight: List[TightConstraint] = _compute_tight_constraints(
-        spec, built, edge_flows, process_runs, eps=eps
-    )
+    tight = _compute_tight_constraints(spec, built, edge_flows, process_runs, eps=eps)
 
     return SolveResult(
-        status=api_status,
+        status=result_status,
         message=message,
         objective_value=s.Objective().Value(),
         edge_flows=edge_flows,
@@ -77,11 +67,17 @@ def extract_solution(
     )
 
 
-def _empty_result(status: _APIStatus, message: str) -> SolveResult:
-    """
-    Always returns a SolveResult that is valid even if your schema requires fields
-    like edge_flows/process_runs/etc. (keeps API responses consistent).
-    """
+def _status_message(status_code: int) -> str:
+    if status_code == pywraplp.Solver.MODEL_INVALID:
+        return "Model is invalid (NaN/Inf coefficients or malformed constraints)."
+    if status_code == pywraplp.Solver.NOT_SOLVED:
+        return "Model not solved (solver did not run or stopped early)."
+    if status_code == pywraplp.Solver.ABNORMAL:
+        return "Solver ended abnormally."
+    return f"Unknown solver status: {status_code}"
+
+
+def _empty_result(status: SolveStatus, message: Optional[str] = None) -> SolveResult:
     return SolveResult(
         status=status,
         message=message,
@@ -93,6 +89,19 @@ def _empty_result(status: _APIStatus, message: str) -> SolveResult:
     )
 
 
+def _compute_sink_delivered(
+    spec: SolveRequest, built: LPBuild, edge_flows: Dict[str, float]
+) -> Dict[str, float]:
+    sink_delivered: Dict[str, float] = {}
+    for n in spec.nodes:
+        if n.type != NodeType.SINK or n.sink is None:
+            continue
+        c = n.sink.commodity
+        in_ids = built.edges_by_v_comm.get((n.id, c), [])
+        sink_delivered[n.id] = sum(edge_flows.get(eid, 0.0) for eid in in_ids)
+    return sink_delivered
+
+
 def _compute_tight_constraints(
     spec: SolveRequest,
     built: LPBuild,
@@ -101,36 +110,37 @@ def _compute_tight_constraints(
     eps: float = 1e-6,
 ) -> List[TightConstraint]:
     tight: List[TightConstraint] = []
+    nodes = {n.id: n for n in spec.nodes}
 
-    # Edge caps
+    # Edge caps: cap - flow
     for eid, cap in built.edge_caps.items():
         slack = cap - edge_flows.get(eid, 0.0)
         if slack <= eps:
             tight.append(TightConstraint(name=f"edge_cap:{eid}", slack=slack))
 
-    nodes = {n.id: n for n in spec.nodes}
-
-    # Source supply
+    # Source supply: cap - total outgoing flow for its commodity
     for nid, cap in built.source_supply_caps.items():
         n = nodes[nid]
-        c = n.source.commodity  # type: ignore[union-attr]
+        assert n.source is not None
+        c = n.source.commodity
         out_ids = built.edges_by_u_comm.get((nid, c), [])
         used = sum(edge_flows.get(eid, 0.0) for eid in out_ids)
         slack = cap - used
         if slack <= eps:
             tight.append(TightConstraint(name=f"source_supply:{nid}", slack=slack))
 
-    # Sink demand
+    # Sink demand: cap - total incoming flow for its commodity
     for nid, cap in built.sink_demand_caps.items():
         n = nodes[nid]
-        c = n.sink.commodity  # type: ignore[union-attr]
+        assert n.sink is not None
+        c = n.sink.commodity
         in_ids = built.edges_by_v_comm.get((nid, c), [])
         used = sum(edge_flows.get(eid, 0.0) for eid in in_ids)
         slack = cap - used
         if slack <= eps:
             tight.append(TightConstraint(name=f"sink_demand:{nid}", slack=slack))
 
-    # Process run caps
+    # Process run caps: cap - runs
     for nid, cap in built.proc_run_caps.items():
         used = process_runs.get(nid, 0.0)
         slack = cap - used

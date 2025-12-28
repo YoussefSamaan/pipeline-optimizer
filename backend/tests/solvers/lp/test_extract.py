@@ -3,8 +3,10 @@ from __future__ import annotations
 import pytest
 from ortools.linear_solver import pywraplp
 
+
 from app.solvers.lp.build import build_lp
 from app.solvers.lp.extract import extract_solution, _compute_tight_constraints
+from app.domain.schema import SolveStatus
 
 from tests.graph_scenario_factory import GraphScenarioFactory
 
@@ -20,7 +22,7 @@ class TestExtractSolution:
 
         res = extract_solution(req, built)
 
-        assert res.status == "optimal"
+        assert res.status == SolveStatus.OPTIMAL
         assert res.objective_value is not None
         assert res.message is None
         assert "e1" in res.edge_flows
@@ -34,18 +36,18 @@ class TestExtractSolution:
         monkeypatch.setattr(built.solver, "Solve", lambda: pywraplp.Solver.FEASIBLE)
 
         res = extract_solution(req, built)
-        assert res.status == "optimal"
+        assert res.status == SolveStatus.OPTIMAL
         assert res.message is not None
         assert "feasible" in res.message.lower()
 
     @pytest.mark.parametrize(
         "status, expected, msg_substr",
         [
-            (pywraplp.Solver.INFEASIBLE, "infeasible", "infeasible"),
-            (pywraplp.Solver.UNBOUNDED, "unbounded", "unbounded"),
-            (pywraplp.Solver.MODEL_INVALID, "error", "invalid"),
-            (pywraplp.Solver.NOT_SOLVED, "error", "not solved"),
-            (pywraplp.Solver.ABNORMAL, "error", "abnormally"),
+            (pywraplp.Solver.INFEASIBLE, SolveStatus.INFEASIBLE, "infeasible"),
+            (pywraplp.Solver.UNBOUNDED, SolveStatus.UNBOUNDED, "unbounded"),
+            (pywraplp.Solver.MODEL_INVALID, SolveStatus.ERROR, "invalid"),
+            (pywraplp.Solver.NOT_SOLVED, SolveStatus.ERROR, "not solved"),
+            (pywraplp.Solver.ABNORMAL, SolveStatus.ERROR, "abnormally"),
         ],
     )
     def test_extract_solution_nonoptimal_returns_empty_result(
@@ -75,14 +77,14 @@ class TestExtractSolution:
 
         res = extract_solution(req, built)
 
-        assert res.status == "error"
+        assert res.status == SolveStatus.ERROR
         assert res.objective_value is None
         assert res.edge_flows == {}
         assert res.process_runs == {}
         assert res.sink_delivered == {}
         assert res.tight_constraints == []
-        assert res.message is not None
-        assert "unknown solver status" in res.message.lower()
+        assert res.status == SolveStatus.ERROR
+        assert "Unknown solver status" in (res.message or "")
 
     # ----------------------------
     # sink_delivered extraction: expr + float branches

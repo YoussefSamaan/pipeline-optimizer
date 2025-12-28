@@ -11,6 +11,13 @@ class SolveMode(str, Enum):
     LP = "lp"
 
 
+class SolveStatus(str, Enum):
+    OPTIMAL = "optimal"
+    INFEASIBLE = "infeasible"
+    UNBOUNDED = "unbounded"
+    ERROR = "error"
+
+
 class NodeType(str, Enum):
     SOURCE = "source"
     PROCESS = "process"
@@ -115,7 +122,7 @@ class TightConstraint(StrictBaseModel):
 
 
 class SolveResult(StrictBaseModel):
-    status: Literal["optimal", "infeasible", "unbounded", "error"]
+    status: SolveStatus
     objective_value: Optional[float] = None
 
     edge_flows: Dict[str, float] = Field(default_factory=dict)
